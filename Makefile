@@ -15,6 +15,9 @@ GLFW_INSTALL_DIR := $(GLFW_DIR)/install
 
 CPP_SRCS := \
 	$(SRC_DIR)/Application.cpp \
+	$(SRC_DIR)/Math.cpp \
+	$(SRC_DIR)/Mesh.cpp \
+	$(SRC_DIR)/ObjParser.cpp \
 	$(SRC_DIR)/Shader.cpp \
 	$(SRC_DIR)/Window.cpp \
 	$(SRC_DIR)/main.cpp

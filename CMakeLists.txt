@@ -31,6 +31,9 @@ endif()
 
 add_executable(scop
 	src/Application.cpp
+	src/Math.cpp
+	src/Mesh.cpp
+	src/ObjParser.cpp
 	src/Shader.cpp
 	src/Window.cpp
 	src/main.cpp
