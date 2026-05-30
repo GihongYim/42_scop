@@ -1,0 +1,21 @@
+# Build outputs
+build/
+obj/
+scop
+
+# Local dependencies
+vendor/
+
+# CMake generated files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+
+# Editor and OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
