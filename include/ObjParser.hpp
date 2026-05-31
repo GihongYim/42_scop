@@ -11,6 +11,8 @@ struct Vertex
 	Vec3 position;
 	Vec3 normal;
 	Vec2 uv;
+	bool hasNormal;
+	bool hasUv;
 
 	Vertex(void);
 	explicit Vertex(const Vec3 &pos);
@@ -43,13 +45,15 @@ private:
 	static FaceIndex parseFaceIndex(const std::string &token);
 	static int parseIndex(const std::string &text);
 	static int resolveIndex(int index, std::size_t size, const std::string &kind);
+	static Vec3 faceTokenPosition(const std::string &token, const std::vector<Vec3> &positions);
+	static std::vector<unsigned int> triangulateFace(const std::vector<std::string> &faceTokens, const std::vector<Vec3> &positions);
 	static Vertex makeVertex(
 		const FaceIndex &index,
 		const std::vector<Vec3> &positions,
 		const std::vector<Vec2> &texCoords,
 		const std::vector<Vec3> &normals
 	);
-	static void centerModel(ObjModel &model);
+	static void normalizeModel(ObjModel &model);
 };
 
 #endif

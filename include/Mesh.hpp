@@ -36,6 +36,8 @@ private:
 	Mesh &operator=(const Mesh &other);
 
 	static Vec3 faceColor(std::size_t faceIndex);
+	static Vec3 faceNormal(const Vertex &a, const Vertex &b, const Vertex &c);
+	static Vec2 projectedUv(const Vec3 &position, const Vec3 &normal);
 	void upload(void);
 	static void buildGpuData(
 		const std::vector<Vertex> &sourceVertices,

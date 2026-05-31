@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.14)
 
 project(scop LANGUAGES C CXX)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 set(CMAKE_CXX_STANDARD 98)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -44,11 +46,18 @@ target_include_directories(scop PRIVATE
 	${CMAKE_SOURCE_DIR}/include
 )
 
-target_compile_options(scop PRIVATE
-	-Wall
-	-Wextra
-	-Werror
-)
+if(MSVC)
+	target_compile_options(scop PRIVATE
+		/W4
+		/WX
+	)
+else()
+	target_compile_options(scop PRIVATE
+		-Wall
+		-Wextra
+		-Werror
+	)
+endif()
 
 target_link_libraries(scop PRIVATE
 	glfw

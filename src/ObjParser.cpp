@@ -1,23 +1,86 @@
 #include "ObjParser.hpp"
 
+#include <cmath>
 #include <cstdlib>
 #include <fstream>
 #include <map>
 #include <sstream>
 #include <stdexcept>
 
+namespace
+{
+	struct ProjectedVertex
+	{
+		unsigned int tokenIndex;
+		Vec2 point;
+
+		ProjectedVertex(unsigned int index, const Vec2 &projected)
+			: tokenIndex(index), point(projected)
+		{
+		}
+	};
+
+	float cross2d(const Vec2 &a, const Vec2 &b, const Vec2 &c)
+	{
+		return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+	}
+
+	float polygonArea(const std::vector<ProjectedVertex> &vertices)
+	{
+		float area = 0.0f;
+
+		for (std::size_t i = 0; i < vertices.size(); ++i)
+		{
+			const Vec2 &a = vertices[i].point;
+			const Vec2 &b = vertices[(i + 1) % vertices.size()].point;
+
+			area += a.x * b.y - b.x * a.y;
+		}
+		return area * 0.5f;
+	}
+
+	bool sameSign(float value, bool positive)
+	{
+		if (positive)
+			return value > 0.000001f;
+		return value < -0.000001f;
+	}
+
+	bool pointInTriangle(const Vec2 &point, const Vec2 &a, const Vec2 &b, const Vec2 &c, bool positive)
+	{
+		const float ab = cross2d(a, b, point);
+		const float bc = cross2d(b, c, point);
+		const float ca = cross2d(c, a, point);
+
+		if (positive)
+			return ab >= -0.000001f && bc >= -0.000001f && ca >= -0.000001f;
+		return ab <= 0.000001f && bc <= 0.000001f && ca <= 0.000001f;
+	}
+
+	void fallbackFan(unsigned int count, std::vector<unsigned int> &triangles)
+	{
+		triangles.clear();
+		for (unsigned int i = 1; i + 1 < count; ++i)
+		{
+			triangles.push_back(0);
+			triangles.push_back(i);
+			triangles.push_back(i + 1);
+		}
+	}
+}
+
 Vertex::Vertex(void)
-	: position(), normal(), uv()
+	: position(), normal(), uv(), hasNormal(false), hasUv(false)
 {
 }
 
 Vertex::Vertex(const Vec3 &pos)
-	: position(pos), normal(), uv()
+	: position(pos), normal(), uv(), hasNormal(false), hasUv(false)
 {
 }
 
 Vertex::Vertex(const Vec3 &pos, const Vec3 &norm, const Vec2 &texCoord)
-	: position(pos), normal(norm), uv(texCoord)
+	: position(pos), normal(norm), uv(texCoord), hasNormal(true), hasUv(true)
 {
 }
 
@@ -76,12 +139,13 @@ ObjModel ObjParser::parse(const std::string &path)
 			if (faceTokens.size() < 3)
 				throw std::runtime_error("invalid obj face in: " + path);
 
-			for (std::size_t i = 1; i + 1 < faceTokens.size(); ++i)
+			const std::vector<unsigned int> triangles = ObjParser::triangulateFace(faceTokens, positions);
+			for (std::size_t i = 0; i + 2 < triangles.size(); i += 3)
 			{
 				const std::string triangle[3] = {
-					faceTokens[0],
-					faceTokens[i],
-					faceTokens[i + 1]
+					faceTokens[triangles[i]],
+					faceTokens[triangles[i + 1]],
+					faceTokens[triangles[i + 2]]
 				};
 
 				for (int j = 0; j < 3; ++j)
@@ -114,7 +178,7 @@ ObjModel ObjParser::parse(const std::string &path)
 
 	if (file.bad())
 		throw std::runtime_error("failed to read obj file: " + path);
-	ObjParser::centerModel(model);
+	ObjParser::normalizeModel(model);
 	return model;
 }
 
@@ -169,6 +233,112 @@ int ObjParser::resolveIndex(int index, std::size_t size, const std::string &kind
 	return resolved;
 }
 
+Vec3 ObjParser::faceTokenPosition(const std::string &token, const std::vector<Vec3> &positions)
+{
+	const FaceIndex faceIndex = ObjParser::parseFaceIndex(token);
+
+	return positions[ObjParser::resolveIndex(faceIndex.position, positions.size(), "position")];
+}
+
+std::vector<unsigned int> ObjParser::triangulateFace(const std::vector<std::string> &faceTokens, const std::vector<Vec3> &positions)
+{
+	std::vector<Vec3> facePositions;
+	Vec3 normal(0.0f, 0.0f, 0.0f);
+	std::vector<ProjectedVertex> projected;
+	std::vector<ProjectedVertex> remaining;
+	std::vector<unsigned int> triangles;
+
+	if (faceTokens.size() == 3)
+	{
+		triangles.push_back(0);
+		triangles.push_back(1);
+		triangles.push_back(2);
+		return triangles;
+	}
+
+	for (std::size_t i = 0; i < faceTokens.size(); ++i)
+		facePositions.push_back(ObjParser::faceTokenPosition(faceTokens[i], positions));
+
+	for (std::size_t i = 0; i < facePositions.size(); ++i)
+	{
+		const Vec3 &current = facePositions[i];
+		const Vec3 &next = facePositions[(i + 1) % facePositions.size()];
+
+		normal.x += (current.y - next.y) * (current.z + next.z);
+		normal.y += (current.z - next.z) * (current.x + next.x);
+		normal.z += (current.x - next.x) * (current.y + next.y);
+	}
+
+	for (std::size_t i = 0; i < facePositions.size(); ++i)
+	{
+		const Vec3 &position = facePositions[i];
+
+		if (std::abs(normal.z) >= std::abs(normal.x) && std::abs(normal.z) >= std::abs(normal.y))
+			projected.push_back(ProjectedVertex(static_cast<unsigned int>(i), Vec2(position.x, position.y)));
+		else if (std::abs(normal.y) >= std::abs(normal.x) && std::abs(normal.y) >= std::abs(normal.z))
+			projected.push_back(ProjectedVertex(static_cast<unsigned int>(i), Vec2(position.x, position.z)));
+		else
+			projected.push_back(ProjectedVertex(static_cast<unsigned int>(i), Vec2(position.z, position.y)));
+	}
+
+	remaining = projected;
+	const bool positive = polygonArea(projected) >= 0.0f;
+	unsigned int guard = 0;
+
+	while (remaining.size() > 3 && guard < faceTokens.size() * faceTokens.size())
+	{
+		bool foundEar = false;
+
+		for (std::size_t i = 0; i < remaining.size(); ++i)
+		{
+			const std::size_t prevIndex = (i + remaining.size() - 1) % remaining.size();
+			const std::size_t nextIndex = (i + 1) % remaining.size();
+			const ProjectedVertex &prev = remaining[prevIndex];
+			const ProjectedVertex &curr = remaining[i];
+			const ProjectedVertex &next = remaining[nextIndex];
+			bool containsPoint = false;
+
+			if (!sameSign(cross2d(prev.point, curr.point, next.point), positive))
+				continue;
+
+			for (std::size_t j = 0; j < remaining.size(); ++j)
+			{
+				if (j == prevIndex || j == i || j == nextIndex)
+					continue;
+				if (pointInTriangle(remaining[j].point, prev.point, curr.point, next.point, positive))
+				{
+					containsPoint = true;
+					break;
+				}
+			}
+			if (containsPoint)
+				continue;
+
+			triangles.push_back(prev.tokenIndex);
+			triangles.push_back(curr.tokenIndex);
+			triangles.push_back(next.tokenIndex);
+			remaining.erase(remaining.begin() + static_cast<std::vector<ProjectedVertex>::difference_type>(i));
+			foundEar = true;
+			break;
+		}
+
+		if (!foundEar)
+		{
+			fallbackFan(static_cast<unsigned int>(faceTokens.size()), triangles);
+			return triangles;
+		}
+		++guard;
+	}
+
+	if (remaining.size() == 3)
+	{
+		triangles.push_back(remaining[0].tokenIndex);
+		triangles.push_back(remaining[1].tokenIndex);
+		triangles.push_back(remaining[2].tokenIndex);
+	}
+	return triangles;
+}
+
 Vertex ObjParser::makeVertex(
 	const FaceIndex &index,
 	const std::vector<Vec3> &positions,
@@ -180,13 +350,19 @@ Vertex ObjParser::makeVertex(
 
 	vertex.position = positions[ObjParser::resolveIndex(index.position, positions.size(), "position")];
 	if (index.texCoord != 0)
+	{
 		vertex.uv = texCoords[ObjParser::resolveIndex(index.texCoord, texCoords.size(), "texture coordinate")];
+		vertex.hasUv = true;
+	}
 	if (index.normal != 0)
+	{
 		vertex.normal = normals[ObjParser::resolveIndex(index.normal, normals.size(), "normal")];
+		vertex.hasNormal = true;
+	}
 	return vertex;
 }
 
-void ObjParser::centerModel(ObjModel &model)
+void ObjParser::normalizeModel(ObjModel &model)
 {
 	if (model.vertices.empty())
 		return;
@@ -217,11 +393,19 @@ void ObjParser::centerModel(ObjModel &model)
 		(min.y + max.y) * 0.5f,
 		(min.z + max.z) * 0.5f
 	);
+	float maxExtent = max.x - min.x;
+
+	if (max.y - min.y > maxExtent)
+		maxExtent = max.y - min.y;
+	if (max.z - min.z > maxExtent)
+		maxExtent = max.z - min.z;
+	if (maxExtent == 0.0f)
+		maxExtent = 1.0f;
 
 	for (std::size_t i = 0; i < model.vertices.size(); ++i)
 	{
-		model.vertices[i].position.x -= center.x;
-		model.vertices[i].position.y -= center.y;
-		model.vertices[i].position.z -= center.z;
+		model.vertices[i].position.x = (model.vertices[i].position.x - center.x) * (2.0f / maxExtent);
+		model.vertices[i].position.y = (model.vertices[i].position.y - center.y) * (2.0f / maxExtent);
+		model.vertices[i].position.z = (model.vertices[i].position.z - center.z) * (2.0f / maxExtent);
 	}
 }

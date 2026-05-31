@@ -2,12 +2,14 @@
 
 #include <exception>
 #include <iostream>
+#include <string>
 
-int main(void)
+int main(int argc, char **argv)
 {
 	try
 	{
-		Application app;
+		const std::string modelPath = argc > 1 ? argv[1] : "assets/42.obj";
+		Application app(modelPath);
 		return app.run();
 	}
 	catch (const std::exception &error)

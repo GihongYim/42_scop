@@ -1,5 +1,6 @@
 #include "Mesh.hpp"
 
+#include <cmath>
 #include <cstddef>
 #include <stdexcept>
 
@@ -81,16 +82,50 @@ void Mesh::draw(void) const
 
 Vec3 Mesh::faceColor(std::size_t faceIndex)
 {
-	static const Vec3 colors[] = {
-		Vec3(0.95f, 0.25f, 0.25f),
-		Vec3(0.25f, 0.70f, 0.95f),
-		Vec3(0.35f, 0.85f, 0.40f),
-		Vec3(0.95f, 0.85f, 0.25f),
-		Vec3(0.85f, 0.35f, 0.95f),
-		Vec3(0.95f, 0.55f, 0.25f)
-	};
+	const unsigned int hash = static_cast<unsigned int>((faceIndex * 1103515245u + 12345u) >> 16);
+	const float shade = 0.38f + static_cast<float>(hash % 38u) / 100.0f;
 
-	return colors[faceIndex % (sizeof(colors) / sizeof(colors[0]))];
+	return Vec3(shade, shade, shade);
+}
+
+Vec3 Mesh::faceNormal(const Vertex &a, const Vertex &b, const Vertex &c)
+{
+	const Vec3 edge1(
+		b.position.x - a.position.x,
+		b.position.y - a.position.y,
+		b.position.z - a.position.z
+	);
+	const Vec3 edge2(
+		c.position.x - a.position.x,
+		c.position.y - a.position.y,
+		c.position.z - a.position.z
+	);
+	Vec3 normal(
+		edge1.y * edge2.z - edge1.z * edge2.y,
+		edge1.z * edge2.x - edge1.x * edge2.z,
+		edge1.x * edge2.y - edge1.y * edge2.x
+	);
+	const float length = std::sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
+
+	if (length == 0.0f)
+		return Vec3(0.0f, 0.0f, 1.0f);
+	normal.x /= length;
+	normal.y /= length;
+	normal.z /= length;
+	return normal;
+}
+
+Vec2 Mesh::projectedUv(const Vec3 &position, const Vec3 &normal)
+{
+	const float ax = std::fabs(normal.x);
+	const float ay = std::fabs(normal.y);
+	const float az = std::fabs(normal.z);
+
+	if (az >= ax && az >= ay)
+		return Vec2(position.x * 0.5f + 0.5f, position.y * 0.5f + 0.5f);
+	if (ay >= ax && ay >= az)
+		return Vec2(position.x * 0.5f + 0.5f, position.z * 0.5f + 0.5f);
+	return Vec2(position.z * 0.5f + 0.5f, position.y * 0.5f + 0.5f);
 }
 
 void Mesh::buildGpuData(
@@ -103,19 +138,27 @@ void Mesh::buildGpuData(
 	for (std::size_t i = 0; i + 2 < sourceIndices.size(); i += 3)
 	{
 		const Vec3 color = Mesh::faceColor(i / 3);
+		unsigned int faceSourceIndices[3];
+		Vertex faceVertices[3];
+		Vec3 normal;
 
 		for (std::size_t j = 0; j < 3; ++j)
 		{
-			const unsigned int sourceIndex = sourceIndices[i + j];
+			faceSourceIndices[j] = sourceIndices[i + j];
+			if (faceSourceIndices[j] >= sourceVertices.size())
+				throw std::runtime_error("mesh index out of range");
+			faceVertices[j] = sourceVertices[faceSourceIndices[j]];
+		}
+		normal = Mesh::faceNormal(faceVertices[0], faceVertices[1], faceVertices[2]);
+
+		for (std::size_t j = 0; j < 3; ++j)
+		{
 			GpuVertex vertex;
 
-			if (sourceIndex >= sourceVertices.size())
-				throw std::runtime_error("mesh index out of range");
-
-			vertex.position = sourceVertices[sourceIndex].position;
+			vertex.position = faceVertices[j].position;
 			vertex.color = color;
-			vertex.normal = sourceVertices[sourceIndex].normal;
-			vertex.uv = sourceVertices[sourceIndex].uv;
+			vertex.normal = faceVertices[j].hasNormal ? faceVertices[j].normal : normal;
+			vertex.uv = faceVertices[j].hasUv ? faceVertices[j].uv : Mesh::projectedUv(vertex.position, normal);
 
 			gpuVertices.push_back(vertex);
 			gpuIndices.push_back(static_cast<unsigned int>(gpuIndices.size()));

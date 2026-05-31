@@ -22,4 +22,4 @@ fi
 
 cmake -S . -B build -DCMAKE_CXX_COMPILER="$CXX_COMPILER"
 cmake --build build
-./build/scop
+./build/scop "$@"

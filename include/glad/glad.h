@@ -45,6 +45,17 @@ typedef khronos_ssize_t GLsizeiptr;
 # define GL_COMPILE_STATUS 0x8B81
 # define GL_LINK_STATUS 0x8B82
 # define GL_INFO_LOG_LENGTH 0x8B84
+# define GL_TEXTURE_2D 0x0DE1
+# define GL_TEXTURE0 0x84C0
+# define GL_TEXTURE_WRAP_S 0x2802
+# define GL_TEXTURE_WRAP_T 0x2803
+# define GL_TEXTURE_MIN_FILTER 0x2801
+# define GL_TEXTURE_MAG_FILTER 0x2800
+# define GL_REPEAT 0x2901
+# define GL_LINEAR 0x2601
+# define GL_LINEAR_MIPMAP_LINEAR 0x2703
+# define GL_RGB 0x1907
+# define GL_UNSIGNED_BYTE 0x1401
 
 extern int GLAD_GL_VERSION_3_3;
 
@@ -68,6 +79,8 @@ typedef void (*PFNGLUSEPROGRAMPROC)(GLuint program);
 typedef void (*PFNGLDELETEPROGRAMPROC)(GLuint program);
 typedef GLint (*PFNGLGETUNIFORMLOCATIONPROC)(GLuint program, const GLchar *name);
 typedef void (*PFNGLUNIFORMMATRIX4FVPROC)(GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
+typedef void (*PFNGLUNIFORM1FPROC)(GLint location, GLfloat v0);
+typedef void (*PFNGLUNIFORM1IPROC)(GLint location, GLint v0);
 typedef void (*PFNGLGENVERTEXARRAYSPROC)(GLsizei n, GLuint *arrays);
 typedef void (*PFNGLBINDVERTEXARRAYPROC)(GLuint array);
 typedef void (*PFNGLDELETEVERTEXARRAYSPROC)(GLsizei n, const GLuint *arrays);
@@ -78,6 +91,13 @@ typedef void (*PFNGLDELETEBUFFERSPROC)(GLsizei n, const GLuint *buffers);
 typedef void (*PFNGLVERTEXATTRIBPOINTERPROC)(GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void *pointer);
 typedef void (*PFNGLENABLEVERTEXATTRIBARRAYPROC)(GLuint index);
 typedef void (*PFNGLDRAWELEMENTSPROC)(GLenum mode, GLsizei count, GLenum type, const void *indices);
+typedef void (*PFNGLACTIVETEXTUREPROC)(GLenum texture);
+typedef void (*PFNGLGENTEXTURESPROC)(GLsizei n, GLuint *textures);
+typedef void (*PFNGLBINDTEXTUREPROC)(GLenum target, GLuint texture);
+typedef void (*PFNGLDELETETEXTURESPROC)(GLsizei n, const GLuint *textures);
+typedef void (*PFNGLTEXPARAMETERIPROC)(GLenum target, GLenum pname, GLint param);
+typedef void (*PFNGLTEXIMAGE2DPROC)(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const void *pixels);
+typedef void (*PFNGLGENERATEMIPMAPPROC)(GLenum target);
 
 extern PFNGLGETSTRINGPROC glad_glGetString;
 extern PFNGLVIEWPORTPROC glad_glViewport;
@@ -99,6 +119,8 @@ extern PFNGLUSEPROGRAMPROC glad_glUseProgram;
 extern PFNGLDELETEPROGRAMPROC glad_glDeleteProgram;
 extern PFNGLGETUNIFORMLOCATIONPROC glad_glGetUniformLocation;
 extern PFNGLUNIFORMMATRIX4FVPROC glad_glUniformMatrix4fv;
+extern PFNGLUNIFORM1FPROC glad_glUniform1f;
+extern PFNGLUNIFORM1IPROC glad_glUniform1i;
 extern PFNGLGENVERTEXARRAYSPROC glad_glGenVertexArrays;
 extern PFNGLBINDVERTEXARRAYPROC glad_glBindVertexArray;
 extern PFNGLDELETEVERTEXARRAYSPROC glad_glDeleteVertexArrays;
@@ -109,6 +131,13 @@ extern PFNGLDELETEBUFFERSPROC glad_glDeleteBuffers;
 extern PFNGLVERTEXATTRIBPOINTERPROC glad_glVertexAttribPointer;
 extern PFNGLENABLEVERTEXATTRIBARRAYPROC glad_glEnableVertexAttribArray;
 extern PFNGLDRAWELEMENTSPROC glad_glDrawElements;
+extern PFNGLACTIVETEXTUREPROC glad_glActiveTexture;
+extern PFNGLGENTEXTURESPROC glad_glGenTextures;
+extern PFNGLBINDTEXTUREPROC glad_glBindTexture;
+extern PFNGLDELETETEXTURESPROC glad_glDeleteTextures;
+extern PFNGLTEXPARAMETERIPROC glad_glTexParameteri;
+extern PFNGLTEXIMAGE2DPROC glad_glTexImage2D;
+extern PFNGLGENERATEMIPMAPPROC glad_glGenerateMipmap;
 
 # define glGetString glad_glGetString
 # define glViewport glad_glViewport
@@ -130,6 +159,8 @@ extern PFNGLDRAWELEMENTSPROC glad_glDrawElements;
 # define glDeleteProgram glad_glDeleteProgram
 # define glGetUniformLocation glad_glGetUniformLocation
 # define glUniformMatrix4fv glad_glUniformMatrix4fv
+# define glUniform1f glad_glUniform1f
+# define glUniform1i glad_glUniform1i
 # define glGenVertexArrays glad_glGenVertexArrays
 # define glBindVertexArray glad_glBindVertexArray
 # define glDeleteVertexArrays glad_glDeleteVertexArrays
@@ -140,6 +171,13 @@ extern PFNGLDRAWELEMENTSPROC glad_glDrawElements;
 # define glVertexAttribPointer glad_glVertexAttribPointer
 # define glEnableVertexAttribArray glad_glEnableVertexAttribArray
 # define glDrawElements glad_glDrawElements
+# define glActiveTexture glad_glActiveTexture
+# define glGenTextures glad_glGenTextures
+# define glBindTexture glad_glBindTexture
+# define glDeleteTextures glad_glDeleteTextures
+# define glTexParameteri glad_glTexParameteri
+# define glTexImage2D glad_glTexImage2D
+# define glGenerateMipmap glad_glGenerateMipmap
 
 int gladLoadGLLoader(GLADloadproc load);
 
